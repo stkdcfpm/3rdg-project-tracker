@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3 Ridgeside Ave — Project Tracker</title>
+<style>
+  :root {
+    --bg: #f6f7f8;
+    --bg-panel: #ffffff;
+    --bg-sidebar: #ffffff;
+    --border: #e3e5e8;
+    --text: #1b1e24;
+    --text-dim: #6b7178;
+    --text-faint: #9aa0a8;
+    --accent: #2563eb;
+    --accent-bg: #eef2ff;
+    --hover: #f1f2f4;
+    --danger: #dc2626;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
+    --radius: 8px;
+
+    --badge-green-bg: #dcfce7; --badge-green-fg: #15803d;
+    --badge-amber-bg: #fef3c7; --badge-amber-fg: #b45309;
+    --badge-blue-bg:  #dbeafe; --badge-blue-fg:  #1d4ed8;
+    --badge-red-bg:   #fee2e2; --badge-red-fg:   #b91c1c;
+    --badge-purple-bg:#ede9fe; --badge-purple-fg:#6d28d9;
+    --badge-gray-bg:  #eceef0; --badge-gray-fg:  #52565c;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --bg-panel: #1b1e24;
+    --bg-sidebar: #191b20;
+    --border: #2a2d34;
+    --text: #eceef0;
+    --text-dim: #a3a9b2;
+    --text-faint: #6b7178;
+    --accent: #5b8bf7;
+    --accent-bg: #1e2a4a;
+    --hover: #23262d;
+    --danger: #f87171;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
+
+    --badge-green-bg: #113321; --badge-green-fg: #4ade80;
+    --badge-amber-bg: #3a2a0a; --badge-amber-fg: #fbbf24;
+    --badge-blue-bg:  #142a4a; --badge-blue-fg:  #60a5fa;
+    --badge-red-bg:   #3a1414; --badge-red-fg:   #f87171;
+    --badge-purple-bg:#28204a; --badge-purple-fg:#c4b5fd;
+    --badge-gray-bg:  #24262c; --badge-gray-fg:  #a3a9b2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --bg-panel: #1b1e24;
+      --bg-sidebar: #191b20;
+      --border: #2a2d34;
+      --text: #eceef0;
+      --text-dim: #a3a9b2;
+      --text-faint: #6b7178;
+      --accent: #5b8bf7;
+      --accent-bg: #1e2a4a;
+      --hover: #23262d;
+      --danger: #f87171;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
+
+      --badge-green-bg: #113321; --badge-green-fg: #4ade80;
+      --badge-amber-bg: #3a2a0a; --badge-amber-fg: #fbbf24;
+      --badge-blue-bg:  #142a4a; --badge-blue-fg:  #60a5fa;
+      --badge-red-bg:   #3a1414; --badge-red-fg:   #f87171;
+      --badge-purple-bg:#28204a; --badge-purple-fg:#c4b5fd;
+      --badge-gray-bg:  #24262c; --badge-gray-fg:  #a3a9b2;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  a { color: var(--accent); }
+
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-header {
+    padding: 18px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-header h1 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+  .sidebar-header p {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--text-dim);
+  }
+  .nav {
+    flex: 1;
+    padding: 10px 8px;
+    overflow-y: auto;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    transition: background .1s ease, color .1s ease;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--hover); color: var(--text); }
+  .nav-item.active { background: var(--accent-bg); color: var(--accent); }
+  .nav-item .count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+    background: var(--hover);
+    border-radius: 20px;
+    padding: 1px 7px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .nav-item.active .count { color: var(--accent); background: var(--bg-panel); }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 0 2px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-faint);
+    flex-shrink: 0;
+  }
+  .status-dot.ok { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
+  .status-dot.err { background: var(--danger); box-shadow: 0 0 0 3px rgba(220,38,38,0.15); }
+  .status-dot.pending { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 11px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background .1s ease, border-color .1s ease;
+  }
+  .btn:hover { background: var(--hover); }
+  .btn:active { transform: translateY(0.5px); }
+  .btn-full { width: 100%; }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .btn-danger:hover { background: var(--badge-red-bg); }
+  .btn-sm { padding: 4px 8px; font-size: 11.5px; }
+  .btn-icon { padding: 7px 9px; }
+
+  /* Main */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .topbar {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: var(--bg-panel);
+  }
+  .topbar h2 {
+    font-size: 17px;
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .topbar-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+  .search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 10px;
+    width: 14px; height: 14px;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+  .search-input {
+    width: 240px;
+    padding: 7px 10px 7px 30px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  .content { flex: 1; overflow: auto; padding: 20px 24px; }
+
+  .table-wrap {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    font-weight: 600;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+    max-width: 340px;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--hover); }
+  td.col-actions, th.col-actions { text-align: right; white-space: nowrap; width: 1%; }
+  .row-actions { display: inline-flex; gap: 6px; opacity: 0; transition: opacity .1s; }
+  tbody tr:hover .row-actions { opacity: 1; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .badge-green  { background: var(--badge-green-bg);  color: var(--badge-green-fg); }
+  .badge-amber  { background: var(--badge-amber-bg);  color: var(--badge-amber-fg); }
+  .badge-blue   { background: var(--badge-blue-bg);   color: var(--badge-blue-fg); }
+  .badge-red    { background: var(--badge-red-bg);    color: var(--badge-red-fg); }
+  .badge-purple { background: var(--badge-purple-bg); color: var(--badge-purple-fg); }
+  .badge-gray   { background: var(--badge-gray-bg);   color: var(--badge-gray-fg); }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .empty-state .big { font-size: 28px; margin-bottom: 8px; }
+
+  .banner {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    background: var(--badge-red-bg);
+    color: var(--badge-red-fg);
+    border: 1px solid var(--badge-red-fg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-header h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .modal-close { cursor: pointer; color: var(--text-faint); background: none; border: none; font-size: 18px; line-height: 1; padding: 4px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 16px 20px; overflow-y: auto; }
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 60px; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast-wrap {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 200;
+  }
+  .toast {
+    background: var(--text);
+    color: var(--bg-panel);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    box-shadow: var(--shadow);
+    max-width: 320px;
+  }
+  .toast.error { background: var(--danger); color: #fff; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  @media (max-width: 720px) {
+    .sidebar { width: 76px; }
+    .sidebar-header p, .nav-item span.label { display: none; }
+    .sidebar-header h1 { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>3 Ridgeside Ave</h1>
+      <p>Project Tracker · BN1 8WD</p>
+    </div>
+    <nav class="nav" id="navList"></nav>
+    <div class="sidebar-footer">
+      <div class="status-row">
+        <span class="status-dot pending" id="statusDot"></span>
+        <span id="statusText">Connecting…</span>
+      </div>
+      <button class="btn btn-full" id="refreshBtn">
+        <span id="refreshIcon">⟳</span> Refresh
+      </button>
+      <button class="btn btn-full" id="themeToggle">🌓 Toggle theme</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h2 id="tabTitle">Loading…</h2>
+        <div class="topbar-sub" id="tabSub">&nbsp;</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search this tab…">
+        </div>
+        <button class="btn btn-primary" id="addRowBtn">+ Add row</button>
+      </div>
+    </div>
+    <div class="content">
+      <div id="errorBanner"></div>
+      <div class="table-wrap" id="tableWrap">
+        <div class="empty-state"><div class="big">⏳</div>Loading data…</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // Config
+  // ---------------------------------------------------------------------
+  var CONFIG = {
+    SCRIPT_URL: "https://script.google.com/macros/s/AKfycbywfGxlviMvz0mWe-LRrKx3kxtD-wWAOOJe4trQ6qTL7cwy0BSnD9HWOXAKzJU6eCDJxQ/exec",
+    TOKEN: "3RDG_TRACKER_2026",
+    TABS: ["DECISIONS LOG", "PAYMENTS LOG", "ACTIONS & OPEN ITEMS", "SWater"]
+  };
+
+  // Fallback column sets used only when a tab has zero rows (so the Add
+  // Row form still has fields to show). Real columns are always taken
+  // from the row data returned by the sheet when rows exist.
+  var DEFAULT_COLUMNS = {
+    "DECISIONS LOG": ["Item", "Decision", "Date", "Notes"],
+    "PAYMENTS LOG": ["Item", "Amount", "Status", "Notes"],
+    "ACTIONS & OPEN ITEMS": ["Item", "Owner", "Status", "Notes"],
+    "SWater": ["Item", "Status", "Notes"]
+  };
+
+  var STATUS_COLORS = {
+    "PAID": "green",
+    "ON HOLD": "amber",
+    "PENDING": "blue",
+    "URGENT": "red",
+    "IN PROGRESS": "purple",
+    "CLOSED": "green",
+    "EVIDENCE HELD": "amber",
+    "GSS BREACH": "red",
+    "CLAIMABLE": "green"
+  };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  var state = {
+    active: CONFIG.TABS[0],
+    data: {},          // tab -> array of row objects
+    columns: {},        // tab -> array of column names (from data or fallback)
+    search: "",
+    connection: "pending" // pending | ok | error
+  };
+
+  CONFIG.TABS.forEach(function (t) { state.data[t] = []; state.columns[t] = DEFAULT_COLUMNS[t] || ["Item"]; });
+
+  // ---------------------------------------------------------------------
+  // DOM refs
+  // ---------------------------------------------------------------------
+  var navList = document.getElementById("navList");
+  var statusDot = document.getElementById("statusDot");
+  var statusText = document.getElementById("statusText");
+  var refreshBtn = document.getElementById("refreshBtn");
+  var refreshIcon = document.getElementById("refreshIcon");
+  var themeToggle = document.getElementById("themeToggle");
+  var tabTitle = document.getElementById("tabTitle");
+  var tabSub = document.getElementById("tabSub");
+  var searchInput = document.getElementById("searchInput");
+  var addRowBtn = document.getElementById("addRowBtn");
+  var tableWrap = document.getElementById("tableWrap");
+  var errorBanner = document.getElementById("errorBanner");
+  var modalRoot = document.getElementById("modalRoot");
+  var toastWrap = document.getElementById("toastWrap");
+
+  // ---------------------------------------------------------------------
+  // Utilities
+  // ---------------------------------------------------------------------
+  function esc(s) {
+    return String(s === undefined || s === null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function badgeClassFor(value) {
+    var key = String(value || "").trim().toUpperCase();
+    var color = STATUS_COLORS[key] || "gray";
+    return "badge badge-" + color;
+  }
+
+  function toast(msg, isError) {
+    var el = document.createElement("div");
+    el.className = "toast" + (isError ? " error" : "");
+    el.textContent = msg;
+    toastWrap.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = "opacity .3s";
+      el.style.opacity = "0";
+      setTimeout(function () { el.remove(); }, 300);
+    }, 3200);
+  }
+
+  function setStatus(mode, text) {
+    state.connection = mode;
+    statusDot.className = "status-dot " + (mode === "ok" ? "ok" : mode === "error" ? "err" : "pending");
+    statusText.textContent = text;
+  }
+
+  // ---------------------------------------------------------------------
+  // Theme
+  // ---------------------------------------------------------------------
+  function applyTheme(t) {
+    if (t) document.documentElement.setAttribute("data-theme", t);
+    else document.documentElement.removeAttribute("data-theme");
+  }
+  (function initTheme() {
+    var saved = localStorage.getItem("tracker_theme");
+    if (saved) applyTheme(saved);
+  })();
+  themeToggle.addEventListener("click", function () {
+    var current = document.documentElement.getAttribute("data-theme");
+    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var effectiveDark = current ? current === "dark" : prefersDark;
+    var next = effectiveDark ? "light" : "dark";
+    applyTheme(next);
+    localStorage.setItem("tracker_theme", next);
+  });
+
+  // ---------------------------------------------------------------------
+  // API
+  // ---------------------------------------------------------------------
+  function apiGet(tab) {
+    var url = CONFIG.SCRIPT_URL + "?action=api&token=" + encodeURIComponent(CONFIG.TOKEN) + "&tab=" + encodeURIComponent(tab);
+    return fetch(url, { method: "GET" }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (json) {
+      var rows = Array.isArray(json) ? json
+        : (json && (json.data || json.rows || json.result || json.items)) || [];
+      if (json && json.success === false) throw new Error(json.error || json.message || "Request failed");
+      return rows;
+    });
+  }
+
+  function apiPost(action, tab, extra) {
+    var body = Object.assign({ token: CONFIG.TOKEN, action: action, tab: tab }, extra || {});
+    return fetch(CONFIG.SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (json) {
+      if (json && json.success === false) throw new Error(json.error || json.message || "Request failed");
+      return json;
+    });
+  }
+
+  function columnsFromRows(tab, rows) {
+    if (rows && rows.length) {
+      var cols = Object.keys(rows[0]);
+      // Keep "Item" first and "Status" as the last data column before actions.
+      cols = cols.filter(function (c) { return c !== "Item" && c !== "Status"; });
+      var out = [];
+      if (Object.prototype.hasOwnProperty.call(rows[0], "Item")) out.push("Item");
+      out = out.concat(cols);
+      if (Object.prototype.hasOwnProperty.call(rows[0], "Status")) out.push("Status");
+      return out;
+    }
+    return DEFAULT_COLUMNS[tab] || ["Item"];
+  }
+
+  function loadTab(tab) {
+    return apiGet(tab).then(function (rows) {
+      state.data[tab] = rows;
+      state.columns[tab] = columnsFromRows(tab, rows);
+      return rows;
+    });
+  }
+
+  function loadAll() {
+    setStatus("pending", "Connecting…");
+    errorBanner.innerHTML = "";
+    refreshIcon.textContent = "⟳";
+    refreshBtn.disabled = true;
+
+    var results = CONFIG.TABS.map(function (tab) {
+      return loadTab(tab).then(function () { return { tab: tab, ok: true }; })
+        .catch(function (err) { return { tab: tab, ok: false, error: err }; });
+    });
+
+    return Promise.all(results).then(function (outcomes) {
+      refreshBtn.disabled = false;
+      var failed = outcomes.filter(function (o) { return !o.ok; });
+      renderNav();
+      renderTable();
+      if (failed.length === 0) {
+        setStatus("ok", "Connected · synced " + new Date().toLocaleTimeString());
+      } else if (failed.length === outcomes.length) {
+        setStatus("error", "Connection failed");
+        showBanner("Could not reach the tracker sheet. Check your connection and try Refresh. (" + failed[0].error.message + ")");
+      } else {
+        setStatus("error", failed.length + " of " + outcomes.length + " tabs failed to load");
+        showBanner("Some tabs failed to load: " + failed.map(function (f) { return f.tab; }).join(", ") + ". Try Refresh.");
+      }
+    });
+  }
+
+  function showBanner(msg) {
+    errorBanner.innerHTML =
+      '<div class="banner"><span>⚠ ' + esc(msg) + '</span>' +
+      '<button class="btn btn-sm" id="bannerDismiss">Dismiss</button></div>';
+    var btn = document.getElementById("bannerDismiss");
+    if (btn) btn.addEventListener("click", function () { errorBanner.innerHTML = ""; });
+  }
+
+  // ---------------------------------------------------------------------
+  // Nav
+  // ---------------------------------------------------------------------
+  function renderNav() {
+    navList.innerHTML = "";
+    CONFIG.TABS.forEach(function (tab) {
+      var item = document.createElement("div");
+      item.className = "nav-item" + (tab === state.active ? " active" : "");
+      item.innerHTML = '<span class="label">' + esc(tab) + '</span><span class="count">' + (state.data[tab] ? state.data[tab].length : 0) + '</span>';
+      item.addEventListener("click", function () {
+        state.active = tab;
+        state.search = "";
+        searchInput.value = "";
+        renderNav();
+        renderTable();
+      });
+      navList.appendChild(item);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Table
+  // ---------------------------------------------------------------------
+  function filteredRows() {
+    var rows = state.data[state.active] || [];
+    if (!state.search) return rows;
+    var q = state.search.toLowerCase();
+    return rows.filter(function (row) {
+      return Object.keys(row).some(function (k) {
+        return String(row[k] || "").toLowerCase().indexOf(q) !== -1;
+      });
+    });
+  }
+
+  function renderTable() {
+    var tab = state.active;
+    var cols = state.columns[tab];
+    var rows = filteredRows();
+
+    tabTitle.textContent = tab;
+    tabSub.textContent = (state.data[tab] || []).length + " item" + ((state.data[tab] || []).length === 1 ? "" : "s") +
+      (state.search ? " · " + rows.length + " matching “" + state.search + "”" : "");
+
+    if (!rows.length) {
+      tableWrap.innerHTML =
+        '<div class="empty-state"><div class="big">' + (state.search ? "🔍" : "📋") + '</div>' +
+        (state.search ? "No rows match your search." : "No rows in this tab yet. Use “Add row” to create one.") +
+        '</div>';
+      return;
+    }
+
+    var thead = "<thead><tr>" + cols.map(function (c) {
+      return '<th' + (c === "Status" ? ' class="col-status"' : '') + '>' + esc(c) + "</th>";
+    }).join("") + '<th class="col-actions">Actions</th></tr></thead>';
+
+    var tbody = "<tbody>" + rows.map(function (row, idx) {
+      var cells = cols.map(function (c) {
+        var val = row[c];
+        if (c === "Status" && val) {
+          return '<td><span class="' + badgeClassFor(val) + '">' + esc(val) + "</span></td>";
+        }
+        return "<td>" + esc(val) + "</td>";
+      }).join("");
+      var realIndex = (state.data[tab] || []).indexOf(row);
+      return "<tr>" + cells +
+        '<td class="col-actions"><span class="row-actions">' +
+        '<button class="btn btn-sm" data-edit="' + realIndex + '">Edit</button>' +
+        '<button class="btn btn-sm btn-danger" data-del="' + realIndex + '">Delete</button>' +
+        "</span></td></tr>";
+    }).join("") + "</tbody>";
+
+    tableWrap.innerHTML = '<table>' + thead + tbody + "</table>";
+
+    tableWrap.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        openRowModal("edit", (state.data[tab] || [])[Number(btn.getAttribute("data-edit"))]);
+      });
+    });
+    tableWrap.querySelectorAll("[data-del]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        confirmDelete((state.data[tab] || [])[Number(btn.getAttribute("data-del"))]);
+      });
+    });
+  }
+
+  searchInput.addEventListener("input", function () {
+    state.search = searchInput.value.trim();
+    renderTable();
+  });
+
+  refreshBtn.addEventListener("click", function () { loadAll(); });
+
+  // ---------------------------------------------------------------------
+  // Modal: Add / Edit
+  // ---------------------------------------------------------------------
+  function closeModal() { modalRoot.innerHTML = ""; }
+
+  function openRowModal(mode, row) {
+    var tab = state.active;
+    var cols = state.columns[tab];
+    row = row || {};
+
+    var fieldsHtml = cols.map(function (c) {
+      var val = esc(row[c]);
+      if (c === "Status") {
+        var known = Object.keys(STATUS_COLORS);
+        var opts = ['<option value=""' + (!row[c] ? " selected" : "") + '></option>']
+          .concat(known.map(function (s) {
+            return '<option value="' + esc(s) + '"' + (row[c] === s ? " selected" : "") + '>' + esc(s) + "</option>";
+          }));
+        // allow a value outside the known list to still show
+        if (row[c] && known.indexOf(row[c]) === -1) {
+          opts.push('<option value="' + esc(row[c]) + '" selected>' + esc(row[c]) + "</option>");
+        }
+        return '<div class="field"><label>' + esc(c) + '</label><select data-field="' + esc(c) + '">' + opts.join("") + "</select></div>";
+      }
+      var isLong = /notes|desc|detail/i.test(c);
+      if (isLong) {
+        return '<div class="field"><label>' + esc(c) + '</label><textarea data-field="' + esc(c) + '">' + val + "</textarea></div>";
+      }
+      var readOnlyAttr = (mode === "edit" && c === "Item") ? " readonly" : "";
+      return '<div class="field"><label>' + esc(c) + '</label><input type="text" data-field="' + esc(c) + '" value="' + val + '"' + readOnlyAttr + "></div>";
+    }).join("");
+
+    var originalItem = row["Item"];
+
+    modalRoot.innerHTML =
+      '<div class="modal-overlay" id="modalOverlay">' +
+        '<div class="modal">' +
+          '<div class="modal-header"><h3>' + (mode === "edit" ? "Edit row" : "Add row") + " · " + esc(tab) + '</h3>' +
+          '<button class="modal-close" id="modalCloseBtn">✕</button></div>' +
+          '<div class="modal-body">' + fieldsHtml + "</div>" +
+          '<div class="modal-footer">' +
+            '<button class="btn" id="modalCancelBtn">Cancel</button>' +
+            '<button class="btn btn-primary" id="modalSaveBtn">' +
+              (mode === "edit" ? "Save changes" : "Add row") +
+            "</button>" +
+          "</div>" +
+        "</div>" +
+      "</div>";
+
+    function close() { closeModal(); }
+    document.getElementById("modalOverlay").addEventListener("click", function (e) {
+      if (e.target.id === "modalOverlay") close();
+    });
+    document.getElementById("modalCloseBtn").addEventListener("click", close);
+    document.getElementById("modalCancelBtn").addEventListener("click", close);
+
+    document.getElementById("modalSaveBtn").addEventListener("click", function () {
+      var saveBtn = this;
+      var newRow = {};
+      cols.forEach(function (c) {
+        var el = modalRoot.querySelector('[data-field="' + CSS.escape(c) + '"]');
+        newRow[c] = el ? el.value : "";
+      });
+      if (!newRow["Item"] || !String(newRow["Item"]).trim()) {
+        toast("“Item” is required.", true);
+        return;
+      }
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="spinner"></span>';
+
+      var action = mode === "edit" ? "updateRow" : "appendRow";
+      var payload = mode === "edit"
+        ? { item: originalItem, row: newRow }
+        : { row: newRow };
+
+      apiPost(action, tab, payload).then(function () {
+        toast(mode === "edit" ? "Row updated." : "Row added.");
+        close();
+        return loadTab(tab).then(function () { renderNav(); renderTable(); });
+      }).catch(function (err) {
+        toast("Save failed: " + err.message, true);
+        saveBtn.disabled = false;
+        saveBtn.textContent = mode === "edit" ? "Save changes" : "Add row";
+      });
+    });
+  }
+
+  addRowBtn.addEventListener("click", function () { openRowModal("add", null); });
+
+  function confirmDelete(row) {
+    var tab = state.active;
+    var itemVal = row["Item"];
+    modalRoot.innerHTML =
+      '<div class="modal-overlay" id="modalOverlay">' +
+        '<div class="modal" style="max-width:380px;">' +
+          '<div class="modal-header"><h3>Delete row</h3>' +
+          '<button class="modal-close" id="modalCloseBtn">✕</button></div>' +
+          '<div class="modal-body">Delete “' + esc(itemVal) + '” from ' + esc(tab) + '? This cannot be undone.</div>' +
+          '<div class="modal-footer">' +
+            '<button class="btn" id="modalCancelBtn">Cancel</button>' +
+            '<button class="btn btn-danger" id="modalDeleteBtn">Delete</button>' +
+          "</div>" +
+        "</div>" +
+      "</div>";
+
+    function close() { closeModal(); }
+    document.getElementById("modalOverlay").addEventListener("click", function (e) {
+      if (e.target.id === "modalOverlay") close();
+    });
+    document.getElementById("modalCloseBtn").addEventListener("click", close);
+    document.getElementById("modalCancelBtn").addEventListener("click", close);
+    document.getElementById("modalDeleteBtn").addEventListener("click", function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+      apiPost("deleteRow", tab, { item: itemVal }).then(function () {
+        toast("Row deleted.");
+        close();
+        return loadTab(tab).then(function () { renderNav(); renderTable(); });
+      }).catch(function (err) {
+        toast("Delete failed: " + err.message, true);
+        close();
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  renderNav();
+  loadAll();
+})();
+</script>
+</body>
+</html>
