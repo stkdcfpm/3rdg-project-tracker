@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3RDG Project Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#f5f4f0;--surface:#fff;--surface-2:#f9f9f8;
+    --border:rgba(11,11,11,.10);--border-strong:rgba(11,11,11,.20);
+    --text:#0b0b0b;--text-sec:#52514e;--text-muted:#898781;
+    --radius:8px;--accent:#185fa5;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#141413;--surface:#1e1e1c;--surface-2:#252523;
+    --border:rgba(255,255,255,.10);--border-strong:rgba(255,255,255,.20);
+    --text:#f5f4f0;--text-sec:#b0afa8;--text-muted:#6e6d69;--accent:#3987e5;
+  }}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+  .topbar{background:var(--surface);border-bottom:.5px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:50;}
+  .brand{font-size:14px;font-weight:500;} .sub{font-size:11px;color:var(--text-muted);}
+  .topbar-r{display:flex;align-items:center;gap:8px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:#898781;display:inline-block;margin-right:4px;transition:background .3s;}
+  .dot.ok{background:#639922;} .dot.err{background:#e24b4a;}
+  .stext{font-size:12px;color:var(--text-muted);}
+  .btn{padding:6px 14px;border:.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;cursor:pointer;background:var(--surface);color:var(--text);font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;transition:background .12s;}
+  .btn:hover{background:var(--surface-2);} .btn.primary{background:var(--text);color:var(--surface);border-color:transparent;} .btn.primary:hover{opacity:.85;} .btn:disabled{opacity:.4;cursor:default;}
+  .layout{display:flex;height:calc(100vh - 52px);}
+  .sidebar{width:200px;flex-shrink:0;background:var(--surface);border-right:.5px solid var(--border);padding:1rem 0;overflow-y:auto;}
+  .slabel{font-size:10px;font-weight:500;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase;padding:0 1rem 6px;}
+  .titem{display:flex;align-items:center;justify-content:space-between;padding:8px 1rem;cursor:pointer;font-size:13px;color:var(--text-sec);border-left:2px solid transparent;transition:all .12s;user-select:none;}
+  .titem:hover{background:var(--surface-2);color:var(--text);}
+  .titem.active{color:var(--text);font-weight:500;border-left-color:var(--text);background:var(--surface-2);}
+  .tcount{font-size:11px;color:var(--text-muted);background:var(--bg);padding:1px 6px;border-radius:10px;}
+  .main{flex:1;overflow-y:auto;padding:1.5rem;}
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
+  .search{flex:1;min-width:180px;max-width:320px;padding:7px 12px;border:.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;}
+  .search:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent;}
+  .ttitle{font-size:15px;font-weight:500;flex:1;} .rcount{font-size:12px;color:var(--text-muted);}
+  .twrap{background:var(--surface);border:.5px solid var(--border);border-radius:12px;overflow:hidden;}
+  .tscroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{padding:9px 12px;text-align:left;font-weight:500;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--border);background:var(--surface-2);white-space:nowrap;}
+  tbody tr{border-bottom:.5px solid var(--border);} tbody tr:last-child{border-bottom:none;} tbody tr:hover{background:var(--surface-2);}
+  tbody td{padding:9px 12px;vertical-align:top;line-height:1.5;}
+  .ctext{max-width:260px;word-break:break-word;} .cnarrow{white-space:nowrap;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;}
+  .b-paid{background:#eaf3de;color:#3b6d11;} .b-hold{background:#faeeda;color:#854f0b;}
+  .b-pending{background:#e6f1fb;color:#185fa5;} .b-urgent{background:#fcebeb;color:#a32d2d;}
+  .b-progress{background:#eeedfe;color:#534ab7;} .b-closed{background:#e1f5ee;color:#0f6e56;}
+  .b-evidence{background:#faeeda;color:#854f0b;} .b-breach{background:#fcebeb;color:#a32d2d;}
+  .b-claimable{background:#eaf3de;color:#3b6d11;} .b-default{background:var(--surface-2);color:var(--text-sec);border:.5px solid var(--border);}
+  .ract{display:flex;gap:4px;white-space:nowrap;}
+  .ibtn{padding:3px 8px;border:.5px solid var(--border);border-radius:4px;background:none;cursor:pointer;font-size:12px;color:var(--text-sec);font-family:inherit;transition:background .1s;}
+  .ibtn:hover{background:var(--surface-2);color:var(--text);} .ibtn.del:hover{background:#fff0f0;color:#e24b4a;border-color:#f09595;}
+  .empty{padding:3rem;text-align:center;color:var(--text-muted);font-size:13px;}
+  .errbanner{padding:10px 14px;background:#fcebeb;border:.5px solid #f09595;border-radius:var(--radius);color:#a32d2d;font-size:13px;margin-bottom:1rem;display:none;}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:1rem;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:12px;border:.5px solid var(--border);padding:1.5rem;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);}
+  .mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+  .mhead h2{font-size:15px;font-weight:500;}
+  .mcls{background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-muted);padding:2px 6px;border-radius:4px;}
+  .mcls:hover{background:var(--surface-2);}
+  .fields{display:flex;flex-direction:column;gap:12px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:500;color:var(--text-sec);}
+  .field input,.field textarea{padding:8px 10px;border:.5px solid var(--border-strong);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;width:100%;}
+  .field input:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent;}
+  .field textarea{resize:vertical;min-height:72px;}
+  .mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;padding-top:1rem;border-top:.5px solid var(--border);}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:var(--surface);padding:10px 16px;border-radius:var(--radius);font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateY(0);} .toast.err{background:#a32d2d;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div><div class="brand">3RDG Project Tracker</div><div class="sub">3 Ridgeside Avenue · Brighton BN1 8WD</div></div>
+  <div class="topbar-r">
+    <span class="dot" id="dot"></span><span class="stext" id="stext">Connecting...</span>
+    <button class="btn" onclick="loadAll()" id="refBtn">&#8635; Refresh</button>
+  </div>
+</div>
+<div class="layout">
+  <nav class="sidebar"><div class="slabel">Tabs</div><div id="sidebar"></div></nav>
+  <main class="main">
+    <div id="errbanner" class="errbanner"></div>
+    <div class="toolbar">
+      <span class="ttitle" id="ttitle">Loading...</span>
+      <input class="search" type="search" id="search" placeholder="Search rows..." oninput="render()">
+      <span class="rcount" id="rcount"></span>
+      <button class="btn primary" onclick="openAdd()">+ Add row</button>
+    </div>
+    <div id="tc"><div class="empty">Connecting to Google Sheets&hellip;</div></div>
+  </main>
+</div>
+<div class="overlay" id="overlay" onclick="bgClick(event)">
+  <div class="modal">
+    <div class="mhead"><h2 id="mtitle">Add row</h2><button class="mcls" onclick="closeModal()">&times;</button></div>
+    <div class="fields" id="mfields"></div>
+    <div class="mfoot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="saveBtn" onclick="saveRow()">Save</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbywfGxlviMvz0mWe-LRrKx3kxtD-wWAOOJe4trQ6qTL7cwy0BSnD9HWOXAKzJU6eCDJxQ/exec';
+const TOKEN = '3RDG_TRACKER_2026';
+const TABS = ['DECISIONS LOG','PAYMENTS LOG','ACTIONS & OPEN ITEMS','SWater','FIXTURES & FINISHES','BUDGET'];
+const KEYCOL = {'DECISIONS LOG':'Item','PAYMENTS LOG':'Item','ACTIONS & OPEN ITEMS':'Item','SWater':'Item','FIXTURES & FINISHES':'Item','BUDGET':'Item'};
+const STATCOL = {'DECISIONS LOG':null,'PAYMENTS LOG':'Status','ACTIONS & OPEN ITEMS':'Status','SWater':'Status','FIXTURES & FINISHES':'Status','BUDGET':'Status'};
+const LONGCOLS = ['Decision','Notes','Detail','Source','Spec / Notes'];
+
+let data={}, cur=TABS[0], editing=null;
+
+async function apiGet(tab) {
+  const url = ENDPOINT + '?action=api&token=' + encodeURIComponent(TOKEN) + '&tab=' + encodeURIComponent(tab);
+  const r = await fetch(url, {redirect:'follow'});
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('Non-JSON response. Open the tracker URL in Chrome (not Safari). Detail: ' + text.slice(0,120)); }
+}
+
+async function apiPost(body) {
+  const r = await fetch(ENDPOINT, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({...body, token: TOKEN}),
+    redirect:'follow'
+  });
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('Save failed — non-JSON response: ' + text.slice(0,120)); }
+}
+
+async function loadAll() {
+  setS(''); document.getElementById('refBtn').disabled=true; hideErr();
+  try {
+    for (const t of TABS) {
+      const r = await apiGet(t);
+      if (r.success) data[t]=r; else throw new Error(r.error||'Failed: '+t);
+    }
+    renderSidebar(); render(); setS('ok');
+  } catch(e) { setS('err'); showErr(e.message); }
+  document.getElementById('refBtn').disabled=false;
+}
+
+function setS(s) {
+  const d=document.getElementById('dot'),t=document.getElementById('stext');
+  d.className='dot'+(s==='ok'?' ok':s==='err'?' err':'');
+  t.textContent=s==='ok'?'Connected \u00b7 '+new Date().toLocaleTimeString():s==='err'?'Connection error':'Loading...';
+}
+
+function renderSidebar() {
+  document.getElementById('sidebar').innerHTML=TABS.map(t=>
+    '<div class="titem '+(t===cur?'active':'')+'" onclick="switchTab(\''+t+'\')"><span>'+t+'</span><span class="tcount">'+(data[t]?data[t].rows.length:'\u2013')+'</span></div>'
+  ).join('');
+}
+
+function switchTab(t){cur=t;document.getElementById('search').value='';renderSidebar();render();}
+
+function bc(v){
+  if(!v)return'b-default';const u=v.toString().toUpperCase();
+  if(u.includes('PAID'))return'b-paid';if(u.includes('ON HOLD'))return'b-hold';
+  if(u.includes('URGENT'))return'b-urgent';if(u.includes('IN PROGRESS'))return'b-progress';
+  if(u.includes('CLOSED'))return'b-closed';if(u.includes('EVIDENCE'))return'b-evidence';
+  if(u.includes('BREACH'))return'b-breach';if(u.includes('CLAIMABLE'))return'b-claimable';
+  if(u.includes('PENDING'))return'b-pending';return'b-default';
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function parsePound(v) { return parseFloat(String(v||'').replace(/[£,]/g,''))||0; }
+
+function renderBudgetDashboard() {
+  const d = data['BUDGET'];
+  if (!d) return '';
+
+  // Sum directly from rows — don't rely on SUMMARY rows
+  let totalPaid = 0, totalCommitted = 0, totalBudget = 0, totalAllocated = 0;
+
+  d.rows.forEach(r => {
+    if (r['Item'] && r['Item'].startsWith('SUMMARY')) return; // skip summary rows
+    const budget    = parsePound(r['Budget £']);
+    const paid      = parsePound(r['Paid £']);
+    const committed = parsePound(r['Committed £']);
+    const type      = (r['Type']||'').toLowerCase();
+
+    totalPaid      += paid;
+    totalCommitted += committed;
+
+    // Budget lines = money we've earmarked but not yet spent
+    if (type === 'budget' || type === 'forecast') totalAllocated += budget;
+    // Actual/committed lines where budget col has a value = also allocated
+    if ((type === 'actual' || type === '') && budget > 0 && paid === 0 && committed === 0) totalAllocated += budget;
+  });
+
+  // Total budget = everything we expect to spend
+  totalBudget = 171539; // hardcoded from model — sum of all budget lines
+
+  const totalSpend       = totalPaid + totalCommitted;
+  const allocatedUnspent = totalAllocated; // budget lines not yet paid/committed
+  const genuinelyFree    = totalBudget - totalSpend - allocatedUnspent;
+  const contingency      = (totalBudget - totalSpend) * 0.10;
+  const forecastTotal    = totalSpend + allocatedUnspent + contingency;
+  const variance         = totalBudget - forecastTotal;
+  const pctSpent         = totalBudget > 0 ? (totalSpend / totalBudget * 100) : 0;
+  const pctAllocated     = totalBudget > 0 ? ((totalSpend + allocatedUnspent) / totalBudget * 100) : 0;
+
+  const card = (label, value, sub, color) =>
+    `<div style="background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;min-width:130px;flex:1;">
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${label}</div>
+      <div style="font-size:19px;font-weight:500;color:${color||'var(--text)'};">£${Math.abs(value).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+      ${sub?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>`:''}
+    </div>`;
+
+  const divider = (label) =>
+    `<div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 6px;">${label}</div>`;
+
+  // Stacked progress bar: paid (green) + committed (amber) + allocated (blue) + free (grey)
+  const pPaid      = Math.min(totalPaid / totalBudget * 100, 100);
+  const pCommitted = Math.min(totalCommitted / totalBudget * 100, 100 - pPaid);
+  const pAllocated = Math.min(allocatedUnspent / totalBudget * 100, 100 - pPaid - pCommitted);
+  const pFree      = Math.max(100 - pPaid - pCommitted - pAllocated, 0);
+
+  const bar = `<div style="background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;">
+    <div style="font-size:11px;font-weight:500;margin-bottom:10px;">Budget of £${totalBudget.toLocaleString('en-GB')}</div>
+    <div style="display:flex;border-radius:4px;height:10px;overflow:hidden;gap:1px;">
+      <div style="background:#639922;width:${pPaid}%;transition:width .3s;" title="Paid"></div>
+      <div style="background:#d4820a;width:${pCommitted}%;transition:width .3s;" title="Committed"></div>
+      <div style="background:#3987e5;width:${pAllocated}%;transition:width .3s;" title="Allocated"></div>
+      <div style="background:var(--surface-2);flex:1;" title="Unallocated"></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:#639922;">■ Paid ${pPaid.toFixed(0)}%</span>
+      <span style="font-size:11px;color:#d4820a;">■ Committed ${pCommitted.toFixed(0)}%</span>
+      <span style="font-size:11px;color:#3987e5;">■ Allocated ${pAllocated.toFixed(0)}%</span>
+      <span style="font-size:11px;color:var(--text-muted);">■ Unallocated ${pFree.toFixed(0)}%</span>
+    </div>
+  </div>`;
+
+  return `<div style="margin-bottom:1.25rem;">
+    ${bar}
+    ${divider('Cash out')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      ${card('Paid to date', totalPaid, 'Apps 1–5 confirmed', '#639922')}
+      ${card('Committed unpaid', totalCommitted, 'App 6 due 14 Aug', '#d4820a')}
+      ${card('Total cash out', totalSpend, 'paid + committed')}
+    </div>
+    ${divider('Budget position')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      ${card('Allocated unspent', allocatedUnspent, 'Kitchen Store + F&F + Kymarn balance', '#3987e5')}
+      ${card('Genuinely free', genuinelyFree < 0 ? 0 : genuinelyFree, genuinelyFree < 0 ? 'Over-allocated' : 'Uncommitted headroom', genuinelyFree < 0 ? '#a32d2d' : '#3b6d11')}
+    </div>
+    ${divider('Forecast')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${card('10% contingency', contingency, 'on unspent balance', '#52514e')}
+      ${card('Forecast to complete', forecastTotal, 'spend + allocated + contingency')}
+      ${card('Variance vs budget', variance, variance < 0 ? 'OVER BUDGET' : 'UNDER BUDGET', variance < 0 ? '#a32d2d' : '#3b6d11')}
+    </div>
+  </div>`;
+}
+
+function render(){
+  const d=data[cur];document.getElementById('ttitle').textContent=cur;
+  if(!d){document.getElementById('tc').innerHTML='<div class="empty">Loading&hellip;</div>';return;}
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const sc=STATCOL[cur];
+  let rows=d.rows.filter(r=>!q||Object.values(r).some(v=>v&&v.toString().toLowerCase().includes(q)));
+  document.getElementById('rcount').textContent=rows.length+' row'+(rows.length!==1?'s':'');
+  const dashboard = cur === 'BUDGET' ? renderBudgetDashboard() : '';
+  if(!rows.length){document.getElementById('tc').innerHTML=dashboard+'<div class="twrap"><div class="empty">No rows found.</div></div>';return;}
+  let h='<div class="twrap"><div class="tscroll"><table><thead><tr>';
+  d.headers.forEach(c=>{h+='<th>'+esc(c)+'</th>';});
+  h+='<th></th></tr></thead><tbody>';
+  rows.forEach(row=>{
+    const ri=d.rows.indexOf(row);h+='<tr>';
+    d.headers.forEach(c=>{
+      const v=row[c]||'';
+      if(c===sc&&v){h+='<td class="cnarrow"><span class="badge '+bc(v)+'">'+esc(v)+'</span></td>';}
+      else if(LONGCOLS.includes(c)||v.toString().length>60){const tr=v.toString().length>150?v.toString().slice(0,150)+'…':v;h+='<td class="ctext" title="'+esc(v)+'">'+esc(tr)+'</td>';}
+      else{h+='<td class="cnarrow">'+esc(v)+'</td>';}
+    });
+    h+='<td><div class="ract"><button class="ibtn" onclick="openEdit('+ri+')">Edit</button><button class="ibtn del" onclick="delRow('+ri+')">&times;</button></div></td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  document.getElementById('tc').innerHTML=(cur==='BUDGET'?renderBudgetDashboard():'')+h;
+}
+
+function buildFields(row){
+  return (data[cur].headers||[]).map(h=>{
+    const v=esc(row?(row[h]||''):'');
+    const long=LONGCOLS.includes(h)||(row&&row[h]&&row[h].toString().length>80);
+    return '<div class="field"><label>'+esc(h)+'</label>'+(long?'<textarea id="mf_'+h.replace(/\W/g,'_')+'" rows="3">'+v+'</textarea>':'<input type="text" id="mf_'+h.replace(/\W/g,'_')+'" value="'+v+'">')+'</div>';
+  }).join('');
+}
+
+function getVals(){
+  const row={};
+  (data[cur].headers||[]).forEach(h=>{const el=document.getElementById('mf_'+h.replace(/\W/g,'_'));row[h]=el?el.value:'';});
+  return row;
+}
+
+function openAdd(){editing=null;document.getElementById('mtitle').textContent='Add row \u2014 '+cur;document.getElementById('mfields').innerHTML=buildFields(null);document.getElementById('overlay').classList.add('open');}
+function openEdit(i){editing={row:data[cur].rows[i],idx:i};document.getElementById('mtitle').textContent='Edit row';document.getElementById('mfields').innerHTML=buildFields(editing.row);document.getElementById('overlay').classList.add('open');}
+function closeModal(){document.getElementById('overlay').classList.remove('open');editing=null;}
+function bgClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
+
+async function saveRow(){
+  const btn=document.getElementById('saveBtn');btn.disabled=true;btn.textContent='Saving\u2026';
+  try{
+    const row=getVals();
+    const r=editing
+      ?await apiPost({action:'updateRow',tab:cur,keyColumn:KEYCOL[cur],keyValue:editing.row[KEYCOL[cur]],row})
+      :await apiPost({action:'appendRow',tab:cur,row});
+    if(r.success){closeModal();await loadAll();toast(editing?'Row updated':'Row added');}
+    else toast('Failed: '+r.error,true);
+  }catch(e){toast(e.message,true);}
+  btn.disabled=false;btn.textContent='Save';
+}
+
+async function delRow(i){
+  const row=data[cur].rows[i],kc=KEYCOL[cur],kv=row[kc];
+  if(!confirm('Delete "'+kv+'"?'))return;
+  try{
+    const r=await apiPost({action:'deleteRow',tab:cur,keyColumn:kc,keyValue:kv});
+    if(r.success){await loadAll();toast('Row deleted');}else toast('Failed: '+r.error,true);
+  }catch(e){toast(e.message,true);}
+}
+
+let toastT;
+function toast(msg,err){
+  const el=document.getElementById('toast');el.textContent=msg;el.className='toast show'+(err?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{el.className='toast';},3500);
+}
+function showErr(m){const e=document.getElementById('errbanner');e.textContent=m;e.style.display='block';}
+function hideErr(){document.getElementById('errbanner').style.display='none';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+loadAll();
+</script>
+</body>
+</html>
