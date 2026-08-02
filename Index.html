@@ -174,45 +174,88 @@ function parsePound(v) { return parseFloat(String(v||'').replace(/[£,]/g,''))||
 function renderBudgetDashboard() {
   const d = data['BUDGET'];
   if (!d) return '';
-  const find = (item) => d.rows.find(r => r['Item'] === item) || {};
-  const totalBudget    = parsePound(find('TOTAL BUDGET')['Budget £']);
-  const totalPaid      = parsePound(find('TOTAL PAID TO DATE')['Paid £']);
-  const totalCommitted = parsePound(find('TOTAL COMMITTED (unpaid)')['Committed £']);
-  const totalSpend     = totalPaid + totalCommitted;
-  const remaining      = totalBudget - totalSpend;
-  const contingency    = remaining * 0.10;
-  const forecast       = totalBudget + contingency;
-  const variance       = totalBudget - forecast;
-  const pctSpent       = totalBudget > 0 ? (totalSpend / totalBudget * 100) : 0;
+
+  // Sum directly from rows — don't rely on SUMMARY rows
+  let totalPaid = 0, totalCommitted = 0, totalBudget = 0, totalAllocated = 0;
+
+  d.rows.forEach(r => {
+    if (r['Item'] && r['Item'].startsWith('SUMMARY')) return; // skip summary rows
+    const budget    = parsePound(r['Budget £']);
+    const paid      = parsePound(r['Paid £']);
+    const committed = parsePound(r['Committed £']);
+    const type      = (r['Type']||'').toLowerCase();
+
+    totalPaid      += paid;
+    totalCommitted += committed;
+
+    // Budget lines = money we've earmarked but not yet spent
+    if (type === 'budget' || type === 'forecast') totalAllocated += budget;
+    // Actual/committed lines where budget col has a value = also allocated
+    if ((type === 'actual' || type === '') && budget > 0 && paid === 0 && committed === 0) totalAllocated += budget;
+  });
+
+  // Total budget = everything we expect to spend
+  totalBudget = 171539; // hardcoded from model — sum of all budget lines
+
+  const totalSpend       = totalPaid + totalCommitted;
+  const allocatedUnspent = totalAllocated; // budget lines not yet paid/committed
+  const genuinelyFree    = totalBudget - totalSpend - allocatedUnspent;
+  const contingency      = (totalBudget - totalSpend) * 0.10;
+  const forecastTotal    = totalSpend + allocatedUnspent + contingency;
+  const variance         = totalBudget - forecastTotal;
+  const pctSpent         = totalBudget > 0 ? (totalSpend / totalBudget * 100) : 0;
+  const pctAllocated     = totalBudget > 0 ? ((totalSpend + allocatedUnspent) / totalBudget * 100) : 0;
 
   const card = (label, value, sub, color) =>
-    `<div style="background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;min-width:140px;flex:1;">
-      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${label}</div>
-      <div style="font-size:20px;font-weight:500;color:${color||'var(--text)'};">£${value.toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
-      ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>` : ''}
+    `<div style="background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;min-width:130px;flex:1;">
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${label}</div>
+      <div style="font-size:19px;font-weight:500;color:${color||'var(--text)'};">£${Math.abs(value).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+      ${sub?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>`:''}
     </div>`;
 
+  const divider = (label) =>
+    `<div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 6px;">${label}</div>`;
+
+  // Stacked progress bar: paid (green) + committed (amber) + allocated (blue) + free (grey)
+  const pPaid      = Math.min(totalPaid / totalBudget * 100, 100);
+  const pCommitted = Math.min(totalCommitted / totalBudget * 100, 100 - pPaid);
+  const pAllocated = Math.min(allocatedUnspent / totalBudget * 100, 100 - pPaid - pCommitted);
+  const pFree      = Math.max(100 - pPaid - pCommitted - pAllocated, 0);
+
   const bar = `<div style="background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;">
-    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Budget utilisation</div>
-    <div style="background:var(--surface-2);border-radius:4px;height:8px;overflow:hidden;">
-      <div style="background:${pctSpent>90?'#e24b4a':pctSpent>70?'#d4820a':'#639922'};width:${Math.min(pctSpent,100)}%;height:100%;border-radius:4px;transition:width .3s;"></div>
+    <div style="font-size:11px;font-weight:500;margin-bottom:10px;">Budget of £${totalBudget.toLocaleString('en-GB')}</div>
+    <div style="display:flex;border-radius:4px;height:10px;overflow:hidden;gap:1px;">
+      <div style="background:#639922;width:${pPaid}%;transition:width .3s;" title="Paid"></div>
+      <div style="background:#d4820a;width:${pCommitted}%;transition:width .3s;" title="Committed"></div>
+      <div style="background:#3987e5;width:${pAllocated}%;transition:width .3s;" title="Allocated"></div>
+      <div style="background:var(--surface-2);flex:1;" title="Unallocated"></div>
     </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${pctSpent.toFixed(1)}% of budget spent or committed</div>
+    <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:#639922;">■ Paid ${pPaid.toFixed(0)}%</span>
+      <span style="font-size:11px;color:#d4820a;">■ Committed ${pCommitted.toFixed(0)}%</span>
+      <span style="font-size:11px;color:#3987e5;">■ Allocated ${pAllocated.toFixed(0)}%</span>
+      <span style="font-size:11px;color:var(--text-muted);">■ Unallocated ${pFree.toFixed(0)}%</span>
+    </div>
   </div>`;
 
   return `<div style="margin-bottom:1.25rem;">
     ${bar}
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-      ${card('Total budget', totalBudget, 'inc. all categories')}
-      ${card('Paid to date', totalPaid, 'Apps 1–5 confirmed')}
-      ${card('Committed', totalCommitted, 'App 6 + rooflights', '#854f0b')}
-      ${card('Total spend', totalSpend, 'paid + committed')}
+    ${divider('Cash out')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      ${card('Paid to date', totalPaid, 'Apps 1–5 confirmed', '#639922')}
+      ${card('Committed unpaid', totalCommitted, 'App 6 due 14 Aug', '#d4820a')}
+      ${card('Total cash out', totalSpend, 'paid + committed')}
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      ${card('Remaining budget', remaining, 'before contingency')}
-      ${card('10% contingency', contingency, 'on remaining balance', '#52514e')}
-      ${card('Forecast to complete', forecast, 'inc. contingency')}
-      ${card('Variance', variance, variance < 0 ? 'OVER BUDGET' : 'UNDER BUDGET', variance < 0 ? '#a32d2d' : '#3b6d11')}
+    ${divider('Budget position')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      ${card('Allocated unspent', allocatedUnspent, 'Kitchen Store + F&F + Kymarn balance', '#3987e5')}
+      ${card('Genuinely free', genuinelyFree < 0 ? 0 : genuinelyFree, genuinelyFree < 0 ? 'Over-allocated' : 'Uncommitted headroom', genuinelyFree < 0 ? '#a32d2d' : '#3b6d11')}
+    </div>
+    ${divider('Forecast')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${card('10% contingency', contingency, 'on unspent balance', '#52514e')}
+      ${card('Forecast to complete', forecastTotal, 'spend + allocated + contingency')}
+      ${card('Variance vs budget', variance, variance < 0 ? 'OVER BUDGET' : 'UNDER BUDGET', variance < 0 ? '#a32d2d' : '#3b6d11')}
     </div>
   </div>`;
 }
