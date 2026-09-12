@@ -41,12 +41,14 @@
   .search:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent;}
   .ttitle{font-size:15px;font-weight:500;flex:1;} .rcount{font-size:12px;color:var(--text-muted);}
   .twrap{background:var(--surface);border:.5px solid var(--border);border-radius:12px;overflow:hidden;}
-  .tscroll{overflow-x:auto;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  thead th{padding:9px 12px;text-align:left;font-weight:500;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--border);background:var(--surface-2);white-space:nowrap;}
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+  thead th{padding:9px 12px;text-align:left;font-weight:600;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--border);background:var(--surface-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   tbody tr{border-bottom:.5px solid var(--border);} tbody tr:last-child{border-bottom:none;} tbody tr:hover{background:var(--surface-2);}
-  tbody td{padding:9px 12px;vertical-align:top;line-height:1.5;}
-  .ctext{max-width:260px;word-break:break-word;} .cnarrow{white-space:nowrap;}
+  tbody td{padding:9px 12px;vertical-align:top;line-height:1.6;overflow:hidden;}
+  .ctext{word-break:break-word;white-space:normal;overflow-wrap:anywhere;}
+  .cnarrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cnotes{word-break:break-word;white-space:normal;color:var(--text-sec);font-size:12px;}
   .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap;}
   .b-paid{background:#eaf3de;color:#3b6d11;} .b-hold{background:#faeeda;color:#854f0b;}
   .b-pending{background:#e6f1fb;color:#185fa5;} .b-urgent{background:#fcebeb;color:#a32d2d;}
@@ -226,11 +228,11 @@ function renderBudgetDashboard() {
   const ff_adjusted          = 12765.25; // recalculated F&F with confirmed appliances
 
   // Totals
-  const totalBudget = p1_contract_vat + kitchen_store_total + rooflights + ff_adjusted;
+  const totalBudget = 179921.27; // Updated 12 Sep 2026 — balustrade and external works removed
   // = 120,720 + 35,000 + 2,434 + 12,765 = ~170,919 (matches prior calc approx)
 
-  const totalPaid      = p1_paid_vat + kitchen_store_paid;  // 72,823 + 8,750
-  const totalCommitted = app7_vat + kitchen_store_remain + rooflights; // 7,530 + 26,250 + 2,434
+  const totalPaid      = 126691.26; // Apps 1-9 + foundations + KS deposit + appliances + doors. Updated 12 Sep 2026
+  const totalCommitted = 27686.71;  // KS balance £25,252.71 + rooflights £2,434. Updated 12 Sep 2026
   const totalSpend     = totalPaid + totalCommitted;
   const allocatedUnspent = p1_remaining_net - app7_net + ff_adjusted; // ~33,639 + 12,765
 
@@ -370,16 +372,51 @@ function render(){
   document.getElementById('rcount').textContent=rows.length+' row'+(rows.length!==1?'s':'');
   const dashboard = cur==='BUDGET' ? renderBudgetDashboard() : '';
   if(!rows.length){document.getElementById('tc').innerHTML=dashboard+'<div class="twrap"><div class="empty">No rows found.</div></div>';return;}
-  let h='<div class="twrap"><div class="tscroll"><table><thead><tr>';
-  d.headers.forEach(c=>{h+='<th>'+esc(c)+'</th>';});
-  h+='<th></th></tr></thead><tbody>';
+  // Column width profiles per tab
+  const COL_WIDTHS = {
+    'DECISIONS LOG':       {Item:22, Decision:30, 'Date Confirmed':10, Source:12, Notes:26},
+    'PAYMENTS LOG':        {Item:22, 'Net £':8, 'VAT £':7, 'Total £':8, 'Due Date':9, 'Paid Date':9, Status:8, Notes:22},
+    'ACTIONS & OPEN ITEMS':{Item:22, Owner:10, Status:8, Deadline:12, Source:12, Notes:30},
+    'SWater':              {Item:16, Detail:30, Status:10, Notes:30},
+    'FIXTURES & FINISHES': {Category:10, Item:18, 'Spec / Notes':22, 'Low £':6, 'High £':6, 'Mid £':6, Priority:8, 'Pre-first fix?':10, Status:8, Notes:18},
+    'BUDGET':              {Category:10, Item:22, Type:7, 'Budget £':8, 'Paid £':8, 'Committed £':9, Status:8, Notes:28},
+  };
+  const widths = COL_WIDTHS[cur] || {};
+  const NOTES_COLS = ['Notes','Detail','Decision','Spec / Notes'];
+  const AMOUNT_COLS = ['Net £','VAT £','Total £','Budget £','Paid £','Committed £','Remaining £','Low £','High £','Mid £'];
+
+  // Build colgroup
+  let cg = '<colgroup>';
+  d.headers.forEach(c => {
+    const w = widths[c];
+    cg += w ? `<col style="width:${w}%">` : '<col>';
+  });
+  cg += '<col style="width:72px"><\/colgroup>';
+
+  let h='<div class="twrap"><div class="tscroll"><table>'+cg+'<thead><tr>';
+  d.headers.forEach(c=>{
+    const align = AMOUNT_COLS.includes(c) ? ' style="text-align:right"' : '';
+    h+=`<th${align}>`+esc(c)+'</th>';
+  });
+  h+='<th style="width:72px"></th></tr></thead><tbody>';
   rows.forEach(row=>{
     const ri=d.rows.indexOf(row);h+='<tr>';
     d.headers.forEach(c=>{
       const v=row[c]||'';
-      if(c===sc&&v){h+='<td class="cnarrow"><span class="badge '+bc(v)+'">'+esc(v)+'</span></td>';}
-      else if(LONGCOLS.includes(c)||v.toString().length>60){const tr=v.toString().length>150?v.toString().slice(0,150)+'\u2026':v;h+='<td class="ctext" title="'+esc(v)+'">'+esc(tr)+'</td>';}
-      else{h+='<td class="cnarrow">'+esc(v)+'</td>';}
+      const isStatus = c===sc && v;
+      const isAmount = AMOUNT_COLS.includes(c);
+      const isNotes = NOTES_COLS.includes(c);
+      if(isStatus){
+        h+='<td><span class="badge '+bc(v)+'">'+esc(v)+'</span></td>';
+      } else if(isAmount){
+        const disp = v.toString().replace(/^(\d)/, '\u00a3$1').replace(/\B(?=(\d{3})+(?!\d))/g,',');
+        h+='<td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;">'+esc(v)+'</td>';
+      } else if(isNotes){
+        const tr=v.toString().length>200?v.toString().slice(0,200)+'\u2026':v;
+        h+='<td class="cnotes" title="'+esc(v)+'">'+esc(tr)+'</td>';
+      } else {
+        h+='<td class="ctext">'+esc(v)+'</td>';
+      }
     });
     h+='<td><div class="ract"><button class="ibtn" onclick="openEdit('+ri+')">Edit</button><button class="ibtn del" onclick="delRow('+ri+')">&times;</button></div></td></tr>';
   });
