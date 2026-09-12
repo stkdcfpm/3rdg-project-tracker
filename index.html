@@ -115,7 +115,7 @@ const TOKEN = '3RDG_TRACKER_2026';
 // Tab groups for sidebar
 const TAB_GROUPS = [
   { label: 'Project', tabs: ['DECISIONS LOG','ACTIONS & OPEN ITEMS'] },
-  { label: 'Finance', tabs: ['PAYMENTS LOG','BUDGET','PHASE 2 TRACKER'] },
+  { label: 'Finance', tabs: ['PAYMENTS LOG','BUDGET','CVR','PHASE 2 TRACKER'] },
   { label: 'Procurement', tabs: ['FIXTURES & FINISHES'] },
   { label: 'Other', tabs: ['SWater'] },
 ];
@@ -357,12 +357,111 @@ function renderPhase2Dashboard() {
   </div>`;
 }
 
+function renderCVR() {
+  const d = data['CVR'];
+  if (!d) return '<div class="empty">CVR data not loaded. Create a CVR tab in your Sheet and run the CVR build file.</div>';
+
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const rows = d.rows.filter(r => !q || Object.values(r).some(v => v && v.toString().toLowerCase().includes(q)));
+  document.getElementById('rcount').textContent = rows.length + ' rows';
+
+  // Section colours
+  const sectionStyles = {
+    'P1 Kymarn': {bg:'#eeedfe', hdr:'#534ab7', label:'Phase 1 — Kymarn Contract'},
+    'P1 Client':  {bg:'#e6f1fb', hdr:'#185fa5', label:'Phase 1 — Client Supply'},
+    'P1 TOTAL':   {bg:'#eaf3de', hdr:'#3b6d11', label:'Phase 1 Grand Total'},
+    'P2 Kymarn':  {bg:'#faeeda', hdr:'#854f0b', label:'Phase 2 — Kymarn Contract'},
+    'GRAND TOTAL':{bg:'#fcebeb', hdr:'#a32d2d', label:'Grand Total — Both Phases'},
+  };
+
+  // Variance colour
+  function varColor(orig, actual) {
+    const o = parseFloat(String(orig||'0').replace(/[£,]/g,'')) || 0;
+    const a = parseFloat(String(actual||'0').replace(/[£,]/g,'')) || 0;
+    if (!o || !a) return '';
+    const pct = (a - o) / o * 100;
+    if (pct > 10) return 'background:#fcebeb;color:#a32d2d;';
+    if (pct > 0)  return 'background:#faeeda;color:#854f0b;';
+    return 'background:#eaf3de;color:#3b6d11;';
+  }
+
+  const fmtN = v => {
+    const n = parseFloat(String(v||'').replace(/[£,]/g,''));
+    return isNaN(n) || n === 0 ? (v||'') : '£' + n.toLocaleString('en-GB', {minimumFractionDigits:0, maximumFractionDigits:2});
+  };
+
+  const AMT = ['Original Quote £','Variation £','Revised Contract £','Claimed to Date £','Paid to Date £','Remaining £'];
+  const HDRS = d.headers;
+
+  let html = '<div class="twrap"><div class="tscroll"><table style="table-layout:auto;min-width:900px;"><colgroup>';
+  html += '<col style="width:12%"><col style="width:20%">';
+  AMT.forEach(() => { html += '<col style="width:8%">'; });
+  html += '<col style="width:6%"><col style="width:7%"><col style="width:15%"></colgroup>';
+  html += '<thead><tr style="background:var(--surface-2);">';
+  HDRS.forEach(h => {
+    const align = AMT.includes(h) ? ' style="text-align:right"' : '';
+    html += `<th${align}>${esc(h)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  let lastSection = '';
+  rows.forEach(row => {
+    const section = row['Section'] || '';
+    const item = row['Item'] || '';
+    const isSectionHeader = item.startsWith('—');
+    const isTotal = item.toUpperCase().startsWith('TOTAL') || item.toUpperCase().startsWith('GRAND TOTAL');
+    const st = sectionStyles[section] || {};
+
+    // Section header row
+    if (section !== lastSection && st.label) {
+      html += `<tr><td colspan="${HDRS.length}" style="padding:10px 12px;background:${st.bg||'var(--surface-2)'};color:${st.hdr||'var(--text)'};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">${st.label}</td></tr>`;
+      lastSection = section;
+    }
+
+    const rowBg = isTotal ? 'background:var(--surface-2);font-weight:600;' : isSectionHeader ? `background:${st.bg||'var(--surface-2)'};` : '';
+
+    html += `<tr style="${rowBg}">`;
+    HDRS.forEach(h => {
+      const v = row[h] || '';
+      if (h === 'Section') {
+        html += '<td></td>';
+      } else if (h === 'Status' && v) {
+        html += `<td><span class="badge ${bc(v)}">${esc(v)}</span></td>`;
+      } else if (h === '% Complete') {
+        const pct = parseFloat(v) || 0;
+        const barColor = pct >= 100 ? '#639922' : pct >= 50 ? '#3987e5' : pct > 0 ? '#d4820a' : 'var(--border)';
+        html += `<td style="white-space:nowrap;">
+          <div style="font-size:11px;margin-bottom:2px;">${esc(v)}</div>
+          <div style="background:var(--border);border-radius:2px;height:4px;width:60px;">
+            <div style="background:${barColor};width:${Math.min(pct,100)}%;height:100%;border-radius:2px;"></div>
+          </div></td>`;
+      } else if (AMT.includes(h)) {
+        const vStyle = h === 'Variation £' && parseFloat(String(v).replace(/[£,]/g,'')) < 0 ? 'color:#a32d2d;' : h === 'Variation £' && parseFloat(String(v).replace(/[£,]/g,'')) > 0 ? 'color:#854f0b;' : '';
+        html += `<td style="text-align:right;font-variant-numeric:tabular-nums;font-size:12px;${vStyle}">${esc(fmtN(v))}</td>`;
+      } else if (h === 'Notes') {
+        const tr = v.length > 120 ? v.slice(0,120)+'…' : v;
+        html += `<td class="cnotes" title="${esc(v)}">${esc(tr)}</td>`;
+      } else {
+        html += `<td class="ctext">${esc(v)}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
 function render(){
   const d=data[cur];
   document.getElementById('ttitle').textContent=cur;
   if(cur==='PHASE 2 TRACKER'){
     document.getElementById('rcount').textContent='';
     document.getElementById('tc').innerHTML=renderPhase2Dashboard();
+    return;
+  }
+  if(cur==='CVR'){
+    document.getElementById('tc').innerHTML=renderCVR();
     return;
   }
   if(!d){document.getElementById('tc').innerHTML='<div class="empty">Loading\u2026</div>';return;}
@@ -380,6 +479,7 @@ function render(){
     'SWater':              {Item:16, Detail:30, Status:10, Notes:30},
     'FIXTURES & FINISHES': {Category:10, Item:18, 'Spec / Notes':22, 'Low £':6, 'High £':6, 'Mid £':6, Priority:8, 'Pre-first fix?':10, Status:8, Notes:18},
     'BUDGET':              {Category:10, Item:22, Type:7, 'Budget £':8, 'Paid £':8, 'Committed £':9, Status:8, Notes:28},
+    'CVR':                 {Section:8, Item:20, 'Original Quote £':8, 'Variation £':7, 'Revised Contract £':8, 'Claimed to Date £':8, 'Paid to Date £':8, 'Remaining £':8, '% Complete':6, Status:7, Notes:12},
   };
   const widths = COL_WIDTHS[cur] || {};
   const NOTES_COLS = ['Notes','Detail','Decision','Spec / Notes'];
